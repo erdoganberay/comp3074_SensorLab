@@ -7,6 +7,7 @@ import android.hardware.SensorManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.contextaware.OnContextAvailableListener
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,13 +28,25 @@ import androidx.compose.ui.unit.dp
 class MainActivity : ComponentActivity(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
     private var temperatureSensor: Sensor? = null
+
+    private var accelerometerSensor: Sensor? = null
     private var gyroscopeSensor: Sensor? = null
     private var temperature by mutableStateOf<Float?>(null)
     private var gyroX by mutableStateOf(0f)
     private var gyroY by mutableStateOf(0f)
     private var gyroZ by mutableStateOf(0f)
     private var temperatureAvailable by mutableStateOf(false)
+
+    private var accelX by mutableStateOf(0f)
+
+    private var accelY by mutableStateOf(0f)
+
+    private var accelZ by mutableStateOf(0f)
+
+    private var accelerometerAvailable by mutableStateOf(false)
     private var gyroscopeAvailable by mutableStateOf(false)
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sensorManager =
@@ -47,6 +60,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             sensorManager.getDefaultSensor(
                 Sensor.TYPE_GYROSCOPE
             )
+
+        accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
+        accelerometerAvailable = accelerometerSensor != null
         temperatureAvailable = temperatureSensor != null
         gyroscopeAvailable = gyroscopeSensor != null
         setContent {
@@ -59,7 +76,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     gyroY = gyroY,
                     gyroZ = gyroZ,
                     gyroscopeAvailable =
-                        gyroscopeAvailable
+                        gyroscopeAvailable,
+                    accelX = accelX,
+                    accelY = accelY,
+                    accelZ = accelZ,
+                    accelerometerAvailable = accelerometerAvailable
                 )
             }
         }
@@ -74,6 +95,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             )
         }
         gyroscopeSensor?.let {
+            sensorManager.registerListener(
+                this,
+                it,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+        }
+        accelerometerSensor?.let {
             sensorManager.registerListener(
                 this,
                 it,
@@ -96,6 +124,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 gyroY = event.values[1]
                 gyroZ = event.values[2]
             }
+            Sensor.TYPE_ACCELEROMETER -> {
+                accelX = event.values[0]
+                accelY = event.values[1]
+                accelZ = event.values[2]
+            }
         }
     }
     override fun onAccuracyChanged(
@@ -112,7 +145,11 @@ fun SensorScreen(
     gyroX: Float,
     gyroY: Float,
     gyroZ: Float,
-    gyroscopeAvailable: Boolean
+    gyroscopeAvailable: Boolean,
+    accelX: Float,
+    accelY: Float,
+    accelZ: Float,
+    accelerometerAvailable: Boolean
 ) {
     Scaffold { innerPadding ->
         Column(
@@ -138,6 +175,7 @@ fun SensorScreen(
                 gyroZ,
                 gyroscopeAvailable
             )
+            AccelerometerCard(accelX, accelY, accelZ, accelerometerAvailable)
         }
     }
 }
@@ -190,6 +228,32 @@ fun GyroscopeCard(
                 Text("X: %.3f rad/s".format(x))
                 Text("Y: %.3f rad/s".format(y))
                 Text("Z: %.3f rad/s".format(z))
+            }
+        }
+    }
+}
+
+
+@Composable
+fun AccelerometerCard(
+    x: Float,
+    y: Float,
+    z: Float,
+    available: Boolean
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Accelerometer",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Spacer(Modifier.height(8.dp))
+            if (!available) {
+                Text("Accelerometer is not available.")
+            } else {
+                Text("X: %.2f m/s".format(x))
+                Text("Y: %.2f m/s".format(y))
+                Text("Z: %.2f m/s".format(z))
             }
         }
     }
